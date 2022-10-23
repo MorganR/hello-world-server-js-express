@@ -18,5 +18,8 @@
   "homepage": "https://github.com/MorganR/hello-world-server-js-express#readme",
   "dependencies": {
     "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "prettier": "^2.7.1"
   }
 }
