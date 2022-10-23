@@ -70,10 +70,10 @@ async function usePrecompressedIfPresent(req, res, next) {
     try {
       const compressed = await fs.readFile(compressedLocalPath);
       res.set("Content-Encoding", "br");
-      res.type(ext);
+      res.type(resType);
       return res.send(compressed);
     } catch {
-      // Ignore the error, this likely means the precompressed file didn't exist.
+      // Ignore the error; this likely means the precompressed file didn't exist.
     }
   }
 
