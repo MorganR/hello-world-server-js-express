@@ -4,9 +4,6 @@ const mime = require("mime");
 const fs = require("fs/promises");
 const path = require("path");
 const zlib = require("zlib");
-const {
-  constants: { BROTLI_PARAM_MODE, BROTLI_MODE_TEXT },
-} = require("zlib");
 
 function getPort() {
   const fromEnv = Number.parseInt(process.env.PORT);
@@ -14,6 +11,7 @@ function getPort() {
 }
 
 const MAX_NAME_LENGTH = 500;
+const GZIP_COMPRESSION_LEVEL = 6;
 
 function helloHandler(req, res, next) {
   if (req.query.name?.length > 0) {
@@ -66,20 +64,18 @@ function powerReciprocalsAltHandler(req, res) {
 }
 
 function compressIfLong(req, res) {
-  if (req.acceptsEncodings("br") && res.body?.length > 256) {
-    zlib.brotliCompress(
+  if (req.acceptsEncodings("gzip") && res.body?.length > 256) {
+    zlib.gzip(
       res.body,
       {
-        params: {
-          [BROTLI_PARAM_MODE]: BROTLI_MODE_TEXT,
-        },
+        level: GZIP_COMPRESSION_LEVEL,
       },
       (err, compressedResult) => {
         if (err !== null) {
           console.error(`Failed to compress: ${err}`);
           res.send(res.body);
         } else {
-          res.set("Content-Encoding", "br");
+          res.set("Content-Encoding", "gzip");
           res.send(compressedResult);
         }
       }
