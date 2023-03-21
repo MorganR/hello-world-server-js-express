@@ -15,42 +15,78 @@ function getPort() {
 
 const MAX_NAME_LENGTH = 500;
 
-function helloHandler(req, res) {
-  res.type("text/plain");
-
+function helloHandler(req, res, next) {
   if (req.query.name?.length > 0) {
     if (req.query.name.length > MAX_NAME_LENGTH) {
       return res.status(400).end();
     }
-    const result = `Hello, ${req.query.name}!`;
-
-    // Compress the response if it's long and supported.
-    if (req.acceptsEncodings("br") && result.length > 256) {
-      zlib.brotliCompress(
-        result,
-        {
-          params: {
-            [BROTLI_PARAM_MODE]: BROTLI_MODE_TEXT,
-          },
-        },
-        (err, compressedResult) => {
-          if (err !== null) {
-            console.error(`Failed to compress: ${err}`);
-            res.send(result);
-          } else {
-            res.set("Content-Encoding", "br");
-            res.send(compressedResult);
-          }
-        }
-      );
-      return;
-    }
-
-    res.send(result);
-    return;
+    res.body = `Hello, ${req.query.name}!`;
+  } else {
+    res.body = "Hello, world!";
   }
+  res.type("text/plain");
+  next();
+}
 
-  res.send("Hello, world!");
+const SLEEP_DURATION_MILLIS = 15;
+
+async function asyncHelloHandler(req, res, next) {
+  await new Promise((r) => setTimeout(r, SLEEP_DURATION_MILLIS));
+  res.type("text/plain");
+  res.body = "Hello, world!";
+  next();
+}
+
+function linesHandler(req, res, next) {
+  const n = Number.parseInt(req.query.n);
+  let result = "<ol>\n";
+  for (let i = 1; i <= n; i++) {
+    result += "  <li>Item number: " + i + "</li>\n";
+  }
+  result += "</ol>";
+  res.body = result;
+  res.type("text/html");
+  next();
+}
+
+function powerReciprocalsAltHandler(req, res) {
+  const n = Number.parseInt(req.query.n);
+  res.type("text/plain");
+  let result = 0.0;
+  let power = 0.5;
+  for (let i = 1; i <= n; i++) {
+    power = power * 2;
+    if (i % 2) {
+      result += 1 / power;
+    } else {
+      result -= 1 / power;
+    }
+  }
+  res.send(result.toString());
+}
+
+function compressIfLong(req, res) {
+  if (req.acceptsEncodings("br") && res.body?.length > 256) {
+    zlib.brotliCompress(
+      res.body,
+      {
+        params: {
+          [BROTLI_PARAM_MODE]: BROTLI_MODE_TEXT,
+        },
+      },
+      (err, compressedResult) => {
+        if (err !== null) {
+          console.error(`Failed to compress: ${err}`);
+          res.send(res.body);
+        } else {
+          res.set("Content-Encoding", "br");
+          res.send(compressedResult);
+        }
+      }
+    );
+  } else if (res.body) {
+    res.send(res.body);
+  }
 }
 
 async function usePrecompressedIfPresent(req, res, next) {
@@ -83,7 +119,10 @@ async function usePrecompressedIfPresent(req, res, next) {
 const app = express();
 const port = getPort();
 
-app.get("/hello", helloHandler);
+app.get("/strings/hello", helloHandler, compressIfLong);
+app.get("/strings/async-hello", asyncHelloHandler, compressIfLong);
+app.get("/strings/lines", linesHandler, compressIfLong);
+app.get("/math/power-reciprocals-alt", powerReciprocalsAltHandler);
 app.use(
   "/static",
   usePrecompressedIfPresent,
