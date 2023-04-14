@@ -13,6 +13,9 @@ function getPort() {
 const MAX_NAME_LENGTH = 500;
 const GZIP_COMPRESSION_LEVEL = 6;
 
+/**
+ * Responds with a greeting to "name".
+ */
 function helloHandler(req, res, next) {
   if (req.query.name?.length > 0) {
     if (req.query.name.length > MAX_NAME_LENGTH) {
@@ -28,6 +31,9 @@ function helloHandler(req, res, next) {
 
 const SLEEP_DURATION_MILLIS = 15;
 
+/**
+ * Responds with a greeting after a delay.
+ */
 async function asyncHelloHandler(req, res, next) {
   await new Promise((r) => setTimeout(r, SLEEP_DURATION_MILLIS));
   res.type("text/plain");
@@ -35,6 +41,9 @@ async function asyncHelloHandler(req, res, next) {
   next();
 }
 
+/**
+ * Responds with a list with "n" items.
+ */
 function linesHandler(req, res, next) {
   const n = Number.parseInt(req.query.n);
   let result = "<ol>\n";
@@ -47,22 +56,31 @@ function linesHandler(req, res, next) {
   next();
 }
 
+/**
+ * Responds with the result of an "n"-term convergent sum.
+ */
 function powerReciprocalsAltHandler(req, res) {
   const n = Number.parseInt(req.query.n);
   res.type("text/plain");
   let result = 0.0;
   let power = 0.5;
   for (let i = 1; i <= n; i++) {
-    power = power * 2;
-    if (i % 2) {
-      result += 1 / power;
-    } else {
+    power *= 2;
+    result += 1 / power;
+
+    if (i < n) {
+      i++;
+      power *= 2;
       result -= 1 / power;
     }
   }
   res.send(result.toString());
 }
 
+/**
+ * Middleware that compresses the current response body if supported and if long enough to be
+ * worthwhile.
+ */
 function compressIfLong(req, res) {
   if (req.acceptsEncodings("gzip") && res.body?.length > 256) {
     zlib.gzip(
@@ -85,7 +103,12 @@ function compressIfLong(req, res) {
   }
 }
 
+/**
+ * File serving middleware that serves a precompressed file if present and if supported by the
+ * request, else defers to the next handler.
+ */
 async function usePrecompressedIfPresent(req, res, next) {
+  // Avoid potentially unsafe URLs.
   if (req.url.includes("..")) {
     return res.status(404).end();
   }
@@ -103,6 +126,7 @@ async function usePrecompressedIfPresent(req, res, next) {
       const compressed = await fs.readFile(compressedLocalPath);
       res.set("Content-Encoding", "br");
       res.type(resType);
+      // Send the precompressed file without calling other handlers.
       return res.send(compressed);
     } catch {
       // Ignore the error; this likely means the precompressed file didn't exist.
