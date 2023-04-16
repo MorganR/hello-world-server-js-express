@@ -103,6 +103,13 @@ function compressIfLong(req, res) {
   }
 }
 
+const COMPRESSIBLE_MIME_TYPES = [
+  'application/json',
+  'application/ld+json',
+  'application/xml',
+  'image/svg+xml',
+];
+
 /**
  * File serving middleware that serves a precompressed file if present and if supported by the
  * request, else defers to the next handler.
@@ -118,8 +125,7 @@ async function usePrecompressedIfPresent(req, res, next) {
   if (
     req.acceptsEncodings("br") &&
     (resType.startsWith("text/") ||
-      resType.startsWith("application/") ||
-      resType == "image/svg+xml")
+      COMPRESSIBLE_MIME_TYPES.some(v => v === resType))
   ) {
     const compressedLocalPath = "./static" + req.url + ".br";
     try {
